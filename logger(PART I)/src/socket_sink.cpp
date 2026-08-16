@@ -1,4 +1,4 @@
-#include "../include/socket_sink.hpp"
+#include "socket_sink.hpp"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -26,7 +26,7 @@ LoggerError SocketSink::connect(const std::string& address, int port) noexcept {
 
   socket_fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd_ < 0) {
-    return LoggerError::kSocketConnectFailed;
+    return LoggerError::kSinkError;
   }
 
   struct sockaddr_in server_addr{};
@@ -43,7 +43,7 @@ LoggerError SocketSink::connect(const std::string& address, int port) noexcept {
                 sizeof(server_addr)) < 0) {
     ::close(socket_fd_);
     socket_fd_ = -1;
-    return LoggerError::kSocketConnectFailed;
+    return LoggerError::kSinkError;
   }
 
   return LoggerError::kSuccess;
@@ -51,7 +51,7 @@ LoggerError SocketSink::connect(const std::string& address, int port) noexcept {
 
 LoggerError SocketSink::write(std::string_view formatted_message) noexcept {
   if (socket_fd_ < 0) {
-    return LoggerError::kSocketSendFailed;
+    return LoggerError::kSinkError;
   }
 
   const char* data = formatted_message.data();
@@ -60,7 +60,7 @@ LoggerError SocketSink::write(std::string_view formatted_message) noexcept {
   while (remaining > 0) {
     const ssize_t sent = ::send(socket_fd_, data, remaining, 0);
     if (sent <= 0) {
-      return LoggerError::kSocketSendFailed;
+      return LoggerError::kSinkError;
     }
     data += sent;
     remaining -= static_cast<std::size_t>(sent);

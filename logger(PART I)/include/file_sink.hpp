@@ -4,8 +4,8 @@
 #include <string>
 #include <string_view>
 
+#include "isink.hpp"
 #include "logger_error.hpp"
-#include "sink.hpp"
 
 namespace logger {
 // для работы с файлом
