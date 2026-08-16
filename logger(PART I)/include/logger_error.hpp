@@ -1,40 +1,34 @@
 #pragma once
 
 #include <cstdint>
-
+#include <string_view>
 namespace logger {
 // ошибки логгера
-enum class LoggerError : std::uint8_t {
+// nodiscard чтобы точно не забыть проверить возвращаемое значение
+enum class [[nodiscard]] LoggerError : std::uint8_t {
   kSuccess = 0,
-  kFileOpenFailed = 1,
-  kWriteFailed = 2,
-  kSocketConnectFailed = 3,
-  kSocketSendFailed = 4,
-  kInvalidArgument = 5,
-  kAlreadyInitialized = 6,
-  kNotInitialized = 7,
+  kNotInitialized = 1,
+  kAlreadyInitialized = 2,
+  kInvalidArgument = 3,
+  kSinkError = 4,
 };
-
-constexpr const char* logger_error_to_string(LoggerError err) noexcept {
+// переход к string_view чтобы более единообразно выгляжел код и был чуть
+// быстрее засчёт хранения размера
+[[nodiscard]] constexpr std::string_view logger_error_to_string(
+    LoggerError err) noexcept {
   switch (err) {
     case LoggerError::kSuccess:
       return "Success";
-    case LoggerError::kFileOpenFailed:
-      return "Failed to open log file";
-    case LoggerError::kWriteFailed:
-      return "Failed to write to log";
-    case LoggerError::kSocketConnectFailed:
-      return "Failed to connect to socket";
-    case LoggerError::kSocketSendFailed:
-      return "Failed to send data to socket";
-    case LoggerError::kInvalidArgument:
-      return "Invalid argument";
-    case LoggerError::kAlreadyInitialized:
-      return "Logger already initialized";
     case LoggerError::kNotInitialized:
       return "Logger not initialized";
+    case LoggerError::kAlreadyInitialized:
+      return "Logger already initialized";
+    case LoggerError::kInvalidArgument:
+      return "Invalid argument";
+    case LoggerError::kSinkError:
+      return "Sink error";
+    default:
+      return "Unknown error";
   }
-  return "Unknown error";
 }
-
 }  // namespace logger

@@ -1,4 +1,4 @@
-#include "../include/file_sink.hpp"
+#include "file_sink.hpp"
 
 namespace logger {
 
@@ -8,14 +8,14 @@ LoggerError FileSink::open(const std::string& filename) noexcept {
   if (file_.is_open()) {
     file_.close();
   }
-
+  file_.clear();
   if (filename.empty()) {
     return LoggerError::kInvalidArgument;
   }
 
   file_.open(filename, std::ios::out | std::ios::app);
   if (!file_.is_open()) {
-    return LoggerError::kFileOpenFailed;
+    return LoggerError::kSinkError;
   }
 
   return LoggerError::kSuccess;
@@ -23,13 +23,13 @@ LoggerError FileSink::open(const std::string& filename) noexcept {
 
 LoggerError FileSink::write(std::string_view formatted_message) noexcept {
   if (!file_.is_open()) {
-    return LoggerError::kWriteFailed;
+    return LoggerError::kSinkError;
   }
 
   file_ << formatted_message;
 
   if (file_.fail()) {
-    return LoggerError::kWriteFailed;
+    return LoggerError::kSinkError;
   }
 
   return LoggerError::kSuccess;

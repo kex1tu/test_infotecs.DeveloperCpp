@@ -1,57 +1,12 @@
-#include <cstdio>
 #include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
 #include <string_view>
 #include <vector>
 
-#include "log_level.hpp"
 #include "logger.hpp"
 #include "logger_error.hpp"
-#include "sink.hpp"
+#include "logger_factories.hpp"
+#include "tests.hpp"
 
-// макросы проверки условий
-#define ASSERT_TRUE(cond)                                                   \
-  do {                                                                      \
-    if (!(cond)) {                                                          \
-      std::cerr << "  [FAIL] " << #cond << " at line " << __LINE__ << '\n'; \
-      return false;                                                         \
-    }                                                                       \
-  } while (0)
-
-#define ASSERT_EQ(a, b) ASSERT_TRUE((a) == (b))
-
-// макрос запуска теста
-#define RUN_TEST(test_func)                           \
-  do {                                                \
-    std::cout << "[RUN ] " << #test_func;             \
-    if (test_func()) {                                \
-      std::cout << "\n[  OK] " << #test_func << '\n'; \
-      ++passed;                                       \
-    }                                                 \
-    ++total;                                          \
-  } while (0)
-
-// sink для тестов
-class MemorySink final : public logger::ISink {
- public:
-  bool is_open_{true};
-  std::vector<std::string> messages;
-
-  logger::LoggerError write(
-      std::string_view formatted_message) noexcept override {
-    if (!is_open_) {
-      return logger::LoggerError::kWriteFailed;
-    }
-    messages.emplace_back(formatted_message);
-    return logger::LoggerError::kSuccess;
-  }
-
-  void close() noexcept override { is_open_ = false; }
-
-  bool is_open() const noexcept override { return is_open_; }
-};
 // из уровня лога строку и обратно
 bool test_1() {
   using namespace logger;
@@ -87,32 +42,38 @@ bool test_1() {
 
 // запуск без инициализации
 bool test_2() {
-  logger::Logger log;
+  logger::Logger log(nullptr);
 
   ASSERT_EQ(log.log_message(logger::LogLevel::kInfo, "test"),
-            logger::LoggerError::kNotInitialized);
-  ASSERT_EQ(log.set_level(logger::LogLevel::kError),
             logger::LoggerError::kNotInitialized);
 
   return true;
 }
-// проверка инициализации
+
+// проверка фабрик
 bool test_3() {
   using namespace logger;
 
-  Logger log;
+  auto [err_empty, log_empty] = make_file_logger("");
+  ASSERT_EQ(err_empty, LoggerError::kInvalidArgument);
+  ASSERT_TRUE(log_empty == nullptr);
 
-  ASSERT_EQ(log.init_with_file(""), LoggerError::kInvalidArgument);
-  ASSERT_EQ(log.init_with_file("tmp/1.log", LogLevel::kDebug),
-            LoggerError::kSuccess);
-  ASSERT_EQ(log.init_with_file("tmp/1.log", LogLevel::kInfo),
-            LoggerError::kAlreadyInitialized);
-  log.close();
+  auto [err_file, log_file] =
+      make_file_logger("test_init.log", LogLevel::kDebug);
+  ASSERT_EQ(err_file, LoggerError::kSuccess);
+  ASSERT_TRUE(log_file != nullptr);
+  log_file->close();
+  std::remove("test_init.log");
 
-  ASSERT_EQ(log.init_with_any_sink(nullptr), LoggerError::kInvalidArgument);
+  auto [err_null, log_null] = make_custom_logger(nullptr);
+  ASSERT_EQ(err_null, LoggerError::kInvalidArgument);
+  ASSERT_TRUE(log_null == nullptr);
 
   auto sink = std::make_unique<MemorySink>();
-  ASSERT_EQ(log.init_with_any_sink(std::move(sink)), LoggerError::kSuccess);
+  auto [err_custom, log_custom] =
+      make_custom_logger(std::move(sink), LogLevel::kInfo);
+  ASSERT_EQ(err_custom, LoggerError::kSuccess);
+  ASSERT_TRUE(log_custom != nullptr);
 
   return true;
 }
@@ -121,18 +82,21 @@ bool test_3() {
 bool test_4() {
   using namespace logger;
 
-  Logger log;
   auto sink = std::make_unique<MemorySink>();
   MemorySink* raw_sink = sink.get();
-  log.init_with_any_sink(std::move(sink), LogLevel::kWarning);
-  ASSERT_EQ(log.log_message(LogLevel::kDebug, "debug message"),
+
+  auto [err, log] = make_custom_logger(std::move(sink), LogLevel::kWarning);
+  ASSERT_EQ(err, LoggerError::kSuccess);
+  ASSERT_TRUE(log != nullptr);
+
+  ASSERT_EQ(log->log_message(LogLevel::kDebug, "debug message"),
             LoggerError::kSuccess);
-  ASSERT_EQ(log.log_message(LogLevel::kInfo, "info message"),
+  ASSERT_EQ(log->log_message(LogLevel::kInfo, "info message"),
             LoggerError::kSuccess);
   ASSERT_EQ(raw_sink->messages.size(), 0);
-  ASSERT_EQ(log.log_message(LogLevel::kWarning, "warning message"),
+  ASSERT_EQ(log->log_message(LogLevel::kWarning, "warning message"),
             LoggerError::kSuccess);
-  ASSERT_EQ(log.log_message(LogLevel::kError, "error message"),
+  ASSERT_EQ(log->log_message(LogLevel::kError, "error message"),
             LoggerError::kSuccess);
   ASSERT_EQ(raw_sink->messages.size(), 2);
   ASSERT_TRUE(raw_sink->messages[0].find("[WARNING] warning message") !=
@@ -141,12 +105,18 @@ bool test_4() {
               std::string::npos);
 
   raw_sink->messages.clear();
-  log.set_level(LogLevel::kError);
-  log.log_message(LogLevel::kDebug, "debug message");
-  log.log_message(LogLevel::kInfo, "info message");
-  log.log_message(LogLevel::kWarning, "warning message");
-  log.log_message(LogLevel::kError, "error message");
-  log.log_message(LogLevel::kUnknown, "unknown message");
+  ASSERT_EQ(log->set_level(LogLevel::kError), LoggerError::kSuccess);
+  ASSERT_EQ(log->get_level(), LogLevel::kError);
+  ASSERT_EQ(log->log_message(LogLevel::kDebug, "debug message"),
+            LoggerError::kSuccess);
+  ASSERT_EQ(log->log_message(LogLevel::kInfo, "info message"),
+            LoggerError::kSuccess);
+  ASSERT_EQ(log->log_message(LogLevel::kWarning, "warning message"),
+            LoggerError::kSuccess);
+  ASSERT_EQ(log->log_message(LogLevel::kError, "error message"),
+            LoggerError::kSuccess);
+  ASSERT_EQ(log->log_message(LogLevel::kUnknown, "unknown message"),
+            LoggerError::kSuccess);
   ASSERT_EQ(raw_sink->messages.size(), 2);
   ASSERT_TRUE(raw_sink->messages[0].find("[ERROR] error message") !=
               std::string::npos);
@@ -155,31 +125,32 @@ bool test_4() {
   return true;
 }
 
-// тест на закрытие и открытие с новым синком
+// тест на закрытие и создание нового логгера
 bool test_5() {
   using namespace logger;
 
-  Logger log;
   auto sink = std::make_unique<MemorySink>();
   MemorySink* raw_sink = sink.get();
 
-  log.init_with_any_sink(std::move(sink), LogLevel::kDebug);
+  auto [err, log] = make_custom_logger(std::move(sink), LogLevel::kDebug);
+  ASSERT_EQ(err, LoggerError::kSuccess);
   ASSERT_TRUE(raw_sink->is_open());
 
-  log.close();
+  log->close();
 
-  ASSERT_EQ(log.log_message(LogLevel::kInfo, "msg after close"),
+  ASSERT_EQ(log->log_message(LogLevel::kInfo, "msg after close"),
             LoggerError::kNotInitialized);
 
   auto new_sink = std::make_unique<MemorySink>();
   MemorySink* raw_new_sink = new_sink.get();
-  ASSERT_EQ(log.init_with_any_sink(std::move(new_sink), LogLevel::kDebug),
-            LoggerError::kSuccess);
-  ASSERT_EQ(log.set_level(LogLevel::kDebug), LoggerError::kSuccess);
+  auto [err_new, new_log] =
+      make_custom_logger(std::move(new_sink), LogLevel::kDebug);
+  ASSERT_EQ(err_new, LoggerError::kSuccess);
   ASSERT_TRUE(raw_new_sink->messages.empty());
 
   return true;
 }
+
 // запись в реальный файл
 bool test_6() {
   using namespace logger;
@@ -187,13 +158,12 @@ bool test_6() {
   const std::string filename = "test_output.log";
   std::remove(filename.c_str());
 
-  Logger log;
-  ASSERT_EQ(log.init_with_file(filename, LogLevel::kInfo),
-            LoggerError::kSuccess);
+  auto [err, log] = make_file_logger(filename, LogLevel::kInfo);
+  ASSERT_EQ(err, LoggerError::kSuccess);
 
-  ASSERT_EQ(log.log_message(LogLevel::kInfo, "file logging works"),
+  ASSERT_EQ(log->log_message(LogLevel::kInfo, "file logging works"),
             LoggerError::kSuccess);
-  log.close();
+  log->close();
 
   std::ifstream file(filename);
   ASSERT_TRUE(file.is_open());

@@ -37,7 +37,6 @@ target_compile_options(logger_static PRIVATE
     -Wconversion
     -Wsign-conversion
     -pedantic
-    -fno-exceptions
 )
 target_compile_options(logger_shared PRIVATE
     -Wall
@@ -46,5 +45,4 @@ target_compile_options(logger_shared PRIVATE
     -Wconversion
     -Wsign-conversion
     -pedantic
-    -fno-exceptions
 )
