@@ -1,7 +1,12 @@
+// Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
+// Distributed under MIT license or project terms.
+
+#include <cctype>
 #include <fstream>
 #include <string_view>
 #include <vector>
 
+#include "file_sink.hpp"
 #include "logger.hpp"
 #include "logger_error.hpp"
 #include "logger_factories.hpp"
@@ -130,11 +135,11 @@ bool test_5() {
   using namespace logger;
 
   auto sink = std::make_unique<MemorySink>();
-  MemorySink* raw_sink = sink.get();
+  ASSERT_TRUE(sink->is_open());
 
   auto [err, log] = make_custom_logger(std::move(sink), LogLevel::kDebug);
   ASSERT_EQ(err, LoggerError::kSuccess);
-  ASSERT_TRUE(raw_sink->is_open());
+  ASSERT_TRUE(log != nullptr);
 
   log->close();
 
@@ -142,11 +147,11 @@ bool test_5() {
             LoggerError::kNotInitialized);
 
   auto new_sink = std::make_unique<MemorySink>();
-  MemorySink* raw_new_sink = new_sink.get();
+  ASSERT_TRUE(new_sink->messages.empty());
   auto [err_new, new_log] =
       make_custom_logger(std::move(new_sink), LogLevel::kDebug);
   ASSERT_EQ(err_new, LoggerError::kSuccess);
-  ASSERT_TRUE(raw_new_sink->messages.empty());
+  ASSERT_TRUE(new_log != nullptr);
 
   return true;
 }
@@ -179,6 +184,105 @@ bool test_6() {
   return true;
 }
 
+// проверка формата лога [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] Message\n
+
+bool test_7() {
+  using namespace logger;
+
+  auto sink = std::make_unique<MemorySink>();
+  MemorySink* raw_sink = sink.get();
+
+  auto [err, log] = make_custom_logger(std::move(sink), LogLevel::kDebug);
+  ASSERT_EQ(err, LoggerError::kSuccess);
+  ASSERT_TRUE(log != nullptr);
+
+  ASSERT_EQ(log->log_message(LogLevel::kInfo, "test format message"),
+            LoggerError::kSuccess);
+  ASSERT_EQ(raw_sink->messages.size(), 1);
+
+  const std::string& msg = raw_sink->messages[0];
+  ASSERT_TRUE(msg.size() >= 25);
+  ASSERT_EQ(msg[0], '[');
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[1])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[2])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[3])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[4])));
+  ASSERT_EQ(msg[5], '-');
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[6])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[7])));
+  ASSERT_EQ(msg[8], '-');
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[9])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[10])));
+  ASSERT_EQ(msg[11], ' ');
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[12])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[13])));
+  ASSERT_EQ(msg[14], ':');
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[15])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[16])));
+  ASSERT_EQ(msg[17], ':');
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[18])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[19])));
+  ASSERT_EQ(msg[20], '.');
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[21])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[22])));
+  ASSERT_TRUE(std::isdigit(static_cast<unsigned char>(msg[23])));
+  ASSERT_EQ(msg[24], ']');
+  ASSERT_EQ(msg.back(), '\n');
+
+  const std::string expected_suffix = " [INFO] test format message\n";
+  ASSERT_TRUE(msg.size() > expected_suffix.size());
+  ASSERT_EQ(msg.substr(msg.size() - expected_suffix.size()), expected_suffix);
+
+  return true;
+}
+
+// запись пустого сообщения
+bool test_8() {
+  using namespace logger;
+
+  auto sink = std::make_unique<MemorySink>();
+  MemorySink* raw_sink = sink.get();
+
+  auto [err, log] = make_custom_logger(std::move(sink), LogLevel::kDebug);
+  ASSERT_EQ(err, LoggerError::kSuccess);
+  ASSERT_TRUE(log != nullptr);
+
+  ASSERT_EQ(log->log_message(LogLevel::kInfo, ""),
+            LoggerError::kInvalidArgument);
+  ASSERT_EQ(log->log_message(LogLevel::kError, std::string_view{}),
+            LoggerError::kInvalidArgument);
+  ASSERT_EQ(raw_sink->messages.size(), 0);
+
+  return true;
+}
+
+// запись в закрытый FileSink и открытие по несуществующему пути
+bool test_9() {
+  using namespace logger;
+
+  FileSink sink;
+  ASSERT_TRUE(!sink.is_open());
+  ASSERT_EQ(sink.write("closed sink write"), LoggerError::kSinkError);
+
+  const std::string temp_file = "test_sink.log";
+  std::remove(temp_file.c_str());
+  ASSERT_EQ(sink.open(temp_file), LoggerError::kSuccess);
+  ASSERT_TRUE(sink.is_open());
+  sink.close();
+  ASSERT_TRUE(!sink.is_open());
+  ASSERT_EQ(sink.write("write after close"), LoggerError::kSinkError);
+  std::remove(temp_file.c_str());
+
+  ASSERT_EQ(sink.open("/non_exist_dir/test.log"), LoggerError::kSinkError);
+  ASSERT_TRUE(!sink.is_open());
+
+  auto [err_invalid, log_invalid] = make_file_logger("/non_exist_dir/test.log");
+  ASSERT_EQ(err_invalid, LoggerError::kSinkError);
+  ASSERT_TRUE(log_invalid == nullptr);
+
+  return true;
+}
+
 int main() {
   int passed = 0;
   int total = 0;
@@ -191,6 +295,9 @@ int main() {
   RUN_TEST(test_4);
   RUN_TEST(test_5);
   RUN_TEST(test_6);
+  RUN_TEST(test_7);
+  RUN_TEST(test_8);
+  RUN_TEST(test_9);
 
   std::cout << "==========================================\n";
   std::cout << "Итого: " << passed << " из " << total << " тестов пройдено.\n";

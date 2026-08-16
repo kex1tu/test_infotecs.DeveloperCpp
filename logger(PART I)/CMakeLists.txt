@@ -29,7 +29,7 @@ target_include_directories(logger_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/incl
 target_include_directories(logger_shared PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 
-#
+
 target_compile_options(logger_static PRIVATE
     -Wall
     -Wextra
