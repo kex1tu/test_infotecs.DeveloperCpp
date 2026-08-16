@@ -1,6 +1,12 @@
+// Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
+// Distributed under MIT license or project terms.
+
 #include "file_sink.hpp"
 
 namespace logger {
+
+// Implementation of class FileSink
+// ////////////////////////////////
 
 FileSink::~FileSink() { close(); }
 
@@ -13,6 +19,8 @@ LoggerError FileSink::open(const std::string& filename) noexcept {
     return LoggerError::kInvalidArgument;
   }
 
+  // Открываем файл в режиме добавления (app), чтобы сохранять историю
+  // предыдущих запусков и предотвратить потерю существующих записей логов.
   file_.open(filename, std::ios::out | std::ios::app);
   if (!file_.is_open()) {
     return LoggerError::kSinkError;
@@ -31,12 +39,15 @@ LoggerError FileSink::write(std::string_view formatted_message) noexcept {
   if (file_.fail()) {
     return LoggerError::kSinkError;
   }
-
+  // Принудительно сбрасываем буфер после каждой записи, чтобы сообщение
+  // гарантированно попало на диск даже при аварийном завершении процесса.
+  file_.flush();
   return LoggerError::kSuccess;
 }
 
 void FileSink::close() noexcept {
   if (file_.is_open()) {
+    file_.flush();
     file_.close();
   }
 }

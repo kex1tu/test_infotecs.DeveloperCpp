@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
+// Distributed under MIT license or project terms.
+
 #include "socket_sink.hpp"
 
 #include <arpa/inet.h>
@@ -12,9 +15,14 @@
 
 namespace logger {
 
+// Implementation of class SocketSink
+// //////////////////////////////////
+
 SocketSink::~SocketSink() { close(); }
 
 LoggerError SocketSink::connect(const std::string& address, int port) noexcept {
+  // Закрываем предыдущий дескриптор при повторном подключении,
+  // чтобы избежать утечки системных ресурсов
   if (socket_fd_ >= 0) {
     ::close(socket_fd_);
     socket_fd_ = -1;
@@ -29,7 +37,7 @@ LoggerError SocketSink::connect(const std::string& address, int port) noexcept {
     return LoggerError::kSinkError;
   }
 
-  struct sockaddr_in server_addr{};
+  struct sockaddr_in server_addr {};
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(static_cast<uint16_t>(port));
 
@@ -56,7 +64,10 @@ LoggerError SocketSink::write(std::string_view formatted_message) noexcept {
 
   const char* data = formatted_message.data();
   std::size_t remaining = formatted_message.size();
-
+  // Системный вызов POSIX send() может передать данные частично из-за
+  // заполнения буфера отправки в стеке TCP/IP. Выполняем циклическую передачу
+  // со сдвигом указателя, пока все байты formatted_message не будут полностью
+  // отправлены в сокет.
   while (remaining > 0) {
     const ssize_t sent = ::send(socket_fd_, data, remaining, 0);
     if (sent <= 0) {

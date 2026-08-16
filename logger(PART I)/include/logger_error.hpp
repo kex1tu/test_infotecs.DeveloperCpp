@@ -1,19 +1,28 @@
+// Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
+// Distributed under MIT license or project terms.
 #pragma once
 
 #include <cstdint>
 #include <string_view>
+
 namespace logger {
-// ошибки логгера
-// nodiscard чтобы точно не забыть проверить возвращаемое значение
+
+/**
+ * \brief Коды ошибок подсистемы логирования.
+ */
 enum class [[nodiscard]] LoggerError : std::uint8_t {
-  kSuccess = 0,
-  kNotInitialized = 1,
-  kAlreadyInitialized = 2,
-  kInvalidArgument = 3,
-  kSinkError = 4,
+  kSuccess = 0,          ///< Успешное выполнение
+  kNotInitialized = 1,   ///< Логгер не инициализирован
+  kInvalidArgument = 2,  ///< Некорректный аргумент
+  kSinkError = 3,        ///< Ошибка приемника
 };
-// переход к string_view чтобы более единообразно выгляжел код и был чуть
-// быстрее засчёт хранения размера
+
+/**
+ * \brief Преобразует код ошибки логгера в строковое представление.
+ *
+ * \param[in] err Код ошибки логгера.
+ * \return Строковое представление ошибки.
+ */
 [[nodiscard]] constexpr std::string_view logger_error_to_string(
     LoggerError err) noexcept {
   switch (err) {
@@ -21,8 +30,6 @@ enum class [[nodiscard]] LoggerError : std::uint8_t {
       return "Success";
     case LoggerError::kNotInitialized:
       return "Logger not initialized";
-    case LoggerError::kAlreadyInitialized:
-      return "Logger already initialized";
     case LoggerError::kInvalidArgument:
       return "Invalid argument";
     case LoggerError::kSinkError:
@@ -31,4 +38,5 @@ enum class [[nodiscard]] LoggerError : std::uint8_t {
       return "Unknown error";
   }
 }
+
 }  // namespace logger

@@ -66,3 +66,6 @@ vcpkg_installed/
 
 .vscode
 
+# специально оставленный тест
+tests/test_socket_sink.cpp
+plan.md

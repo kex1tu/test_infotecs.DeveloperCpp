@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
+// Distributed under MIT license or project terms.
+
 #pragma once
 
 // NOLINTNEXTLINE
@@ -8,9 +11,6 @@
 #include "isink.hpp"
 #include "logger_error.hpp"
 
-// база для тестов в отдельном файле
-
-// макросы проверки условий
 #define ASSERT_TRUE(cond)                                                   \
   do {                                                                      \
     if (!(cond)) {                                                          \
@@ -21,7 +21,6 @@
 
 #define ASSERT_EQ(a, b) ASSERT_TRUE((a) == (b))
 
-// макрос запуска теста
 #define RUN_TEST(test_func)                           \
   do {                                                \
     std::cout << "[RUN ] " << #test_func;             \
@@ -32,7 +31,7 @@
     ++total;                                          \
   } while (0)
 
-// sink для тестов
+// sink для тестов на базе std::vector<std::string>
 class MemorySink final : public logger::ISink {
  public:
   bool is_open_{true};
