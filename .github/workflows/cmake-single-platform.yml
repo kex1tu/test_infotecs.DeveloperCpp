@@ -24,18 +24,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      # - name: Install dependencies and tools
-        # run: |
-         # if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
-          # $SUDO apt-get update
-          # $SUDO apt-get install -y --no-install-recommends \
-          #  build-essential \
-          #  cmake \
-          #  ninja-build \
-          #  g++ \
-          #  clang-format \
-          #  clang-tidy \
-          #  valgrind
+      - name: Install dependencies and tools
+        run: |
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            g++ \
+            clang-format \
+            clang-tidy \
+            valgrind
 
       - name: Check code formatting (clang-format)
         run: |
@@ -94,15 +94,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-     # - name: Install dependencies
-       # run: |
-        #  if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
-        #  $SUDO apt-get update
-        #  $SUDO apt-get install -y --no-install-recommends \
-        #  build-essential \
-        #  cmake \
-        #  ninja-build \
-        #  g++
+      - name: Install dependencies
+        run: |
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            g++
 
       - name: Configure CMake with Sanitizer
         run: >
