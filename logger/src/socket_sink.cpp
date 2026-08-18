@@ -6,20 +6,28 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <cerrno>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
 namespace logger {
 
 SocketSink::~SocketSink() { close(); }
 
-LoggerError SocketSink::connect(const std::string& address, int port) noexcept {
-  if (address.empty() || port <= 0 || port > 65535) {
+LoggerError SocketSink::connect(const std::string& address, int port,
+                                int send_timeout_sec) noexcept {
+  if (address.empty() || port <= 0 || port > 65535 || send_timeout_sec <= 0) {
     return LoggerError::kInvalidArgument;
   }
 
   address_ = address;
   port_ = port;
+  send_timeout_sec_ = send_timeout_sec;
 
   return reconnect();
 }
@@ -27,7 +35,8 @@ LoggerError SocketSink::connect(const std::string& address, int port) noexcept {
 LoggerError SocketSink::reconnect() noexcept {
   socket_fd_.reset();
 
-  if (address_.empty() || port_ <= 0 || port_ > 65535) {
+  if (address_.empty() || port_ <= 0 || port_ > 65535 ||
+      send_timeout_sec_ <= 0) {
     return LoggerError::kInvalidArgument;
   }
 
@@ -37,7 +46,17 @@ LoggerError SocketSink::reconnect() noexcept {
   }
   UniqueFd sock(raw_fd);
 
-  struct sockaddr_in server_addr {};
+  // Таймаут на отправку SO_SNDTIMEO гарантирует, что рабочий поток логирования
+  // не зависнет бесконечно в send()
+  timeval timeout{};
+  timeout.tv_sec = send_timeout_sec_;
+  timeout.tv_usec = 0;
+  if (::setsockopt(sock.get(), SOL_SOCKET, SO_SNDTIMEO, &timeout,
+                   sizeof(timeout)) < 0) {
+    return LoggerError::kSinkError;
+  }
+
+  struct sockaddr_in server_addr{};
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(static_cast<uint16_t>(port_));
 
@@ -61,18 +80,21 @@ LoggerError SocketSink::write(std::string_view formatted_message) noexcept {
 
   const char* data = formatted_message.data();
   std::size_t remaining = formatted_message.size();
-  bool reconected = false;
+  bool reconnected = false;
   // флаг MSG_NOSIGNAL нужен, он подавляет генерацию сигнала SIGPIPE, значит
   // приложение не останавливается
   while (remaining > 0) {
     const ssize_t sent =
         ::send(socket_fd_.get(), data, remaining, MSG_NOSIGNAL);
     if (sent <= 0) {
+      if (errno == EINTR) {
+        continue;
+      }
       close();
-      if (reconected || reconnect() != LoggerError::kSuccess) {
+      if (reconnected || reconnect() != LoggerError::kSuccess) {
         return LoggerError::kSinkError;
       }
-      reconected = true;
+      reconnected = true;
       // если переподключились сбрасываем указатель и остаток чтобы отправить
       // зананво полностью
       data = formatted_message.data();

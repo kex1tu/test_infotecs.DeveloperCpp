@@ -46,11 +46,7 @@ LogLevel Logger::get_level() const noexcept { return min_level_; }
 
 void Logger::close() noexcept {
   if (sink_) {
-    try {
-      sink_->close();
-      // NOLINTNEXTLINE
-    } catch (...) {
-    }
+    sink_->close();
     sink_.reset();
   }
 }

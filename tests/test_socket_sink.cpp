@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -214,6 +215,11 @@ bool test_4() {
             logger::LoggerError::kInvalidArgument);
   ASSERT_EQ(sink.connect("127.0.0.1", 70000),
             logger::LoggerError::kInvalidArgument);
+
+  ASSERT_EQ(sink.connect("127.0.0.1", 8080, 0),
+            logger::LoggerError::kInvalidArgument);
+  ASSERT_EQ(sink.connect("127.0.0.1", 8080, -1),
+            logger::LoggerError::kInvalidArgument);
   ASSERT_TRUE(!sink.is_open());
 
   auto [err_ip, log_ip] = logger::make_socket_logger("999.999.999.999", 8080);
@@ -289,6 +295,29 @@ bool test_6() {
   return true;
 }
 
+bool test_7() {
+  LocalListener listener;
+  ASSERT_TRUE(listener.is_valid());
+
+  logger::SocketSink sink;
+  ASSERT_EQ(sink.connect("127.0.0.1", listener.get_port(), 1),
+            logger::LoggerError::kSuccess);
+  ASSERT_TRUE(sink.is_open());
+  ASSERT_TRUE(listener.accept_client());
+
+  std::string large_payload(20 * 1024 * 1024, 'X');
+  const auto start = std::chrono::steady_clock::now();
+  const auto err = sink.write(large_payload);
+  const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                           std::chrono::steady_clock::now() - start)
+                           .count();
+
+  ASSERT_EQ(err, logger::LoggerError::kSinkError);
+  ASSERT_TRUE(elapsed <= 10);
+
+  return true;
+}
+
 int main() {
   int passed = 0;
   int total = 0;
@@ -301,6 +330,7 @@ int main() {
   RUN_TEST(test_4);
   RUN_TEST(test_5);
   RUN_TEST(test_6);
+  RUN_TEST(test_7);
 
   std::cout << "==========================================\n";
   std::cout << "Итого: " << passed << " из " << total << " тестов пройдено.\n";

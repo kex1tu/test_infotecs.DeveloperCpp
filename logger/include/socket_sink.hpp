@@ -14,6 +14,9 @@ namespace logger {
 
 class SocketSink final : public ISink {
  public:
+  ///< Таймаут по умолчанию на отправку данных в сокет (в секундах).
+  static constexpr int kDefaultSendTimeoutSec = 3;
+
   SocketSink() = default;
   ~SocketSink() override;
   /**
@@ -31,7 +34,8 @@ class SocketSink final : public ISink {
    * \pre !address.empty() && port >= 1 && port <= 65535
    * \post при успешном коде возврата is_open() == true.
    */
-  LoggerError connect(const std::string& address, int port) noexcept;
+  LoggerError connect(const std::string& address, int port,
+                      int send_timeout_sec = kDefaultSendTimeoutSec) noexcept;
   LoggerError write(std::string_view formatted_message) noexcept override;
   void close() noexcept override;
   bool is_open() const noexcept override;
@@ -42,6 +46,7 @@ class SocketSink final : public ISink {
   UniqueFd socket_fd_;
   std::string address_;
   int port_ = 0;
+  int send_timeout_sec_ = kDefaultSendTimeoutSec;
 };
 
 }  // namespace logger
