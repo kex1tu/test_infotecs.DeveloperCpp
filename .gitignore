@@ -65,3 +65,6 @@ vcpkg_installed/
 *.dwo
 
 .vscode
+*.act
+.actrc
+notes.md
