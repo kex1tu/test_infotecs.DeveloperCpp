@@ -1,4 +1,6 @@
 # Тестовое задание от ИнфоТеКС на стажировку Разработчик С++
+[Ссылка на github](https://github.com/kex1tu/test_infotecs.DeveloperCpp)
+
 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg?style=flat-square&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/17)
 [![Build System](https://img.shields.io/badge/CMake-3.14%2B-064F8C.svg?style=flat-square&logo=cmake)](CMakeLists.txt)
