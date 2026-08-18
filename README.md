@@ -232,7 +232,7 @@ valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./build/test
 | **2.1** | Консольное многопоточное приложение для проверки | да | [console_app/src/main.cpp](console_app/src/main.cpp) |
 | **2.2** | Передача данных в поток записи через потокобезопасную очередь | да | [thread_safe_queue.hpp](logger/include/thread_safe_queue.hpp) |
 | **3.1\*** | (*Дополнительно*) Сервер сбора статистик по сокету ($N$, $T$) | да | [stat_app/src/main.cpp](stat_app/src/main.cpp) |
-| **Общие** | C++17, CMake, GCC, без сторонних библиотек, без исключений | да | Сборка с `-fno-exceptions`, `UniqueFd`, STL-only |
+| **Общие** | C++17, CMake, GCC, без сторонних библиотек, без исключений | да | STL-only |
 
 <details>
 <summary><b>Развернуть официальный текст технического задания</b></summary>
