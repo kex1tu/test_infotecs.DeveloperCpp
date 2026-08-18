@@ -16,7 +16,7 @@
 namespace logger {
 
 /**
- * \brief Создает и инициализирует логгер для записи в файл.
+ * \brief создает и инициализирует логгер для записи в файл.
  *
  * Examples:
  * \code
@@ -26,9 +26,9 @@ namespace logger {
  * }
  * \endcode
  *
- * \param[in] filename Путь к файлу лога.
- * \param[in] min_level Минимальный уровень логирования.
- * \return Пара, содержащая код ошибки и уникальный указатель на Logger.
+ * \param[in] filename путь к файлу лога.
+ * \param[in] min_level минимальный уровень логирования.
+ * \return пара, содержащая код ошибки и уникальный указатель на Logger.
  */
 inline std::pair<LoggerError, std::unique_ptr<Logger>> make_file_logger(
     const std::string& filename,
@@ -48,7 +48,7 @@ inline std::pair<LoggerError, std::unique_ptr<Logger>> make_file_logger(
 }
 
 /**
- * \brief Создает и инициализирует логгер для передачи записей по TCP-сокету.
+ * \brief создает и инициализирует логгер для передачи записей по TCP-сокету.
  *
  * Examples:
  * \code
@@ -59,9 +59,9 @@ inline std::pair<LoggerError, std::unique_ptr<Logger>> make_file_logger(
  * \endcode
  *
  * \param[in] address IPv4-адрес сервера.
- * \param[in] port Номер TCP-порта [1..65535].
- * \param[in] min_level Минимальный уровень логирования.
- * \return Пара, содержащая код ошибки и уникальный указатель на Logger.
+ * \param[in] port номер TCP-порта [1..65535].
+ * \param[in] min_level минимальный уровень логирования.
+ * \return пара, содержащая код ошибки и уникальный указатель на Logger.
  */
 inline std::pair<LoggerError, std::unique_ptr<Logger>> make_socket_logger(
     const std::string& address, int port,
@@ -81,11 +81,11 @@ inline std::pair<LoggerError, std::unique_ptr<Logger>> make_socket_logger(
 }
 
 /**
- * \brief Создает логгер с произвольной пользовательской реализацией ISink.
+ * \brief создает логгер с произвольной пользовательской реализацией ISink.
  *
- * \param[in] sink Уникальный указатель на предварительно открытый ISink.
- * \param[in] min_level Минимальный уровень логирования.
- * \return Пара, содержащая код ошибки и уникальный указатель на Logger.
+ * \param[in] sink уникальный указатель на предварительно открытый ISink.
+ * \param[in] min_level минимальный уровень логирования.
+ * \return пара, содержащая код ошибки и уникальный указатель на Logger.
  */
 inline std::pair<LoggerError, std::unique_ptr<Logger>> make_custom_logger(
     std::unique_ptr<ISink> sink,

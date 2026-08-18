@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
 // Distributed under MIT license or project terms.
 
+// NOLINTBEGIN
 #include <atomic>
 #include <cstddef>
 #include <thread>
@@ -8,8 +9,6 @@
 
 #include "tests.hpp"
 #include "thread_safe_queue.hpp"
-// проверка базовой функциональности + try_pop + wait_and_pop +
-// push(T&&) + clear
 bool test_1() {
   logger::ThreadSafeQueue<int> queue;
   int i = 0;
@@ -17,9 +16,9 @@ bool test_1() {
   ASSERT_EQ(queue.size(), 0);
   queue.push(++i);
   ASSERT_TRUE(!queue.empty());
-  ASSERT_EQ(queue.size(), static_cast<size_t>(i));
+  ASSERT_EQ(queue.size(), static_cast<std::size_t>(i));
   queue.push(++i);
-  ASSERT_EQ(queue.size(), static_cast<size_t>(i));
+  ASSERT_EQ(queue.size(), static_cast<std::size_t>(i));
 
   auto value = queue.try_pop();
   ASSERT_TRUE(value.has_value());
@@ -48,7 +47,7 @@ bool test_1() {
 
   return true;
 }
-// всё что со stop
+
 bool test_2() {
   logger::ThreadSafeQueue<int> queue;
   queue.push(1);
@@ -70,10 +69,10 @@ bool test_2() {
 
   return true;
 }
-// проверка что wait_and_pop() блокируется и потом по cv просыпается
+
 bool test_3() {
   logger::ThreadSafeQueue<int> queue;
-  std::optional<int> result = 42;  // любое начальное значение
+  std::optional<int> result = 42;
   std::thread consumer([&queue, &result]() { result = queue.wait_and_pop(); });
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   queue.stop();
@@ -83,7 +82,7 @@ bool test_3() {
 
   return true;
 }
-// добавляем элементы потом останавливаем и достаем все значения
+
 bool test_4() {
   logger::ThreadSafeQueue<int> queue;
   queue.push(1);
@@ -118,7 +117,7 @@ bool test_4() {
 
   return true;
 }
-// проверка с move-only типами
+
 bool test_5() {
   logger::ThreadSafeQueue<std::unique_ptr<int>> queue;
   auto ptr1 = std::make_unique<int>(100);
@@ -138,13 +137,12 @@ bool test_5() {
   return true;
 }
 
-// несколько потоков на пробуждение
 bool test_6() {
   logger::ThreadSafeQueue<int> queue;
-  constexpr size_t kConsNum = 4;
+  constexpr std::size_t kConsNum = 4;
   std::vector<std::thread> consumers(kConsNum);
   std::vector<std::optional<int>> results(kConsNum);
-  for (size_t i = 0; i < kConsNum; ++i) {
+  for (std::size_t i = 0; i < kConsNum; ++i) {
     consumers[i] = std::thread(
         [&queue, &results, i]() { results[i] = queue.wait_and_pop(); });
   }
@@ -155,24 +153,23 @@ bool test_6() {
       t.join();
     }
   }
-  for (size_t i = 0; i < kConsNum; ++i) {
+  for (std::size_t i = 0; i < kConsNum; ++i) {
     ASSERT_TRUE(!results[i].has_value());
   }
   return true;
 }
 
-// несколько потоков на пробуждение, но с данными
 bool test_7() {
-  logger::ThreadSafeQueue<size_t> queue;
-  constexpr size_t kConsNum = 4;
+  logger::ThreadSafeQueue<std::size_t> queue;
+  constexpr std::size_t kConsNum = 4;
   std::vector<std::thread> consumers(kConsNum);
-  std::vector<std::optional<size_t>> results(kConsNum);
-  for (size_t i = 0; i < kConsNum; ++i) {
+  std::vector<std::optional<std::size_t>> results(kConsNum);
+  for (std::size_t i = 0; i < kConsNum; ++i) {
     consumers[i] = std::thread(
         [&queue, &results, i]() { results[i] = queue.wait_and_pop(); });
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  for (size_t i = 0; i < kConsNum; ++i) {
+  for (std::size_t i = 0; i < kConsNum; ++i) {
     queue.push(i);
   }
 
@@ -182,8 +179,8 @@ bool test_7() {
       t.join();
     }
   }
-  std::unordered_set<size_t> st;
-  for (size_t i = 0; i < kConsNum; ++i) {
+  std::unordered_set<std::size_t> st;
+  for (std::size_t i = 0; i < kConsNum; ++i) {
     ASSERT_TRUE(results[i].has_value());
     ASSERT_TRUE(results[i].value() < kConsNum);
     st.insert(results[i].value());
@@ -192,14 +189,14 @@ bool test_7() {
   ASSERT_EQ(st.size(), kConsNum);
   return true;
 }
-// один поток много пишет другой много читает
+
 bool test_8() {
-  logger::ThreadSafeQueue<size_t> queue;
-  constexpr size_t kCount = 1000;
-  std::vector<size_t> consumed_values(kCount);
+  logger::ThreadSafeQueue<std::size_t> queue;
+  constexpr std::size_t kCount = 1000;
+  std::vector<std::size_t> consumed_values(kCount);
 
   std::thread consumer([&queue, &consumed_values]() {
-    for (size_t i = 0; i < kCount; ++i) {
+    for (std::size_t i = 0; i < kCount; ++i) {
       auto value = queue.wait_and_pop();
       if (value.has_value()) {
         consumed_values[i] = value.value();
@@ -208,7 +205,7 @@ bool test_8() {
   });
 
   std::thread producer([&queue]() {
-    for (size_t i = 0; i < kCount; ++i) {
+    for (std::size_t i = 0; i < kCount; ++i) {
       queue.push(i);
     }
   });
@@ -216,24 +213,24 @@ bool test_8() {
   producer.join();
   consumer.join();
   ASSERT_EQ(consumed_values.size(), kCount);
-  for (size_t i = 0; i < kCount; ++i) {
+  for (std::size_t i = 0; i < kCount; ++i) {
     ASSERT_EQ(consumed_values[i], i);
   }
 
   queue.stop();
   return true;
 }
-// много пишут и много читают
-bool test_9() {
-  logger::ThreadSafeQueue<size_t> queue;
 
-  constexpr size_t kCount = 4;
-  constexpr size_t kItemsPerThread = 10000;
-  constexpr size_t kTotalItems = kCount * kItemsPerThread;
-  std::atomic<size_t> consumed_count = 0;
-  std::atomic<size_t> consumed_sum = 0;
+bool test_9() {
+  logger::ThreadSafeQueue<std::size_t> queue;
+
+  constexpr std::size_t kCount = 4;
+  constexpr std::size_t kItemsPerThread = 10000;
+  constexpr std::size_t kTotalItems = kCount * kItemsPerThread;
+  std::atomic<std::size_t> consumed_count = 0;
+  std::atomic<std::size_t> consumed_sum = 0;
   std::vector<std::thread> consumers(kCount);
-  for (size_t i = 0; i < kCount; ++i) {
+  for (std::size_t i = 0; i < kCount; ++i) {
     consumers[i] = std::thread([&queue, &consumed_count, &consumed_sum]() {
       auto value = queue.wait_and_pop();
       while (value.has_value()) {
@@ -244,9 +241,9 @@ bool test_9() {
     });
   }
   std::vector<std::thread> producers(kCount);
-  for (size_t i = 0; i < kCount; ++i) {
+  for (std::size_t i = 0; i < kCount; ++i) {
     producers[i] = std::thread([&queue, i]() {
-      for (size_t j = 0; j < kItemsPerThread; ++j) {
+      for (std::size_t j = 0; j < kItemsPerThread; ++j) {
         queue.push((i * kItemsPerThread) + j);
       }
     });
@@ -268,7 +265,7 @@ int main() {
   int passed = 0;
   int total = 0;
 
-  std::cout << "Тесты: \n";
+  std::cout << "Тесты ThreadSafeQueue\n";
   std::cout << "==========================================\n";
   RUN_TEST(test_1);
   RUN_TEST(test_2);
@@ -285,3 +282,4 @@ int main() {
 
   return (passed == total) ? 0 : 1;
 }
+// NOLINTEND

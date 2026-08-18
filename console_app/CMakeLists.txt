@@ -14,10 +14,11 @@ add_executable(console_app
     src/utilities.cpp
 )
 
-target_include_directories(console_app PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(console_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+find_package(Threads REQUIRED)
+
 target_link_libraries(console_app PRIVATE logger_static)
-target_link_libraries(console_app PRIVATE -pthread)
+target_link_libraries(console_app PRIVATE Threads::Threads)
 target_compile_options(console_app PRIVATE
     -Wall
     -Wextra

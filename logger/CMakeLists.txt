@@ -38,6 +38,7 @@ target_compile_options(logger_static PRIVATE
     -Wsign-conversion
     -pedantic
 )
+
 target_compile_options(logger_shared PRIVATE
     -Wall
     -Wextra
