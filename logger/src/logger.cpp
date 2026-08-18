@@ -5,7 +5,7 @@
 
 #include <array>
 #include <chrono>
-#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <ctime>
 #include <string_view>
@@ -63,18 +63,21 @@ void append_current_timestamp(std::string& result) {
   const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                       now.time_since_epoch()) %
                   1000;
-  std::tm tm_buf{};
-  localtime_r(&time_t_now, &tm_buf);
-
-  std::array<char, 32> buf{};
-  const int len = std::snprintf(
-      buf.data(), buf.size(), "%04d-%02d-%02d %02d:%02d:%02d.%03lld",
-      tm_buf.tm_year + 1900, tm_buf.tm_mon + 1, tm_buf.tm_mday, tm_buf.tm_hour,
-      tm_buf.tm_min, tm_buf.tm_sec, static_cast<long long>(ms.count()));
-
-  if (len > 0 && static_cast<std::size_t>(len) < buf.size()) {
-    result.append(buf.data(), static_cast<std::size_t>(len));
+  thread_local std::time_t cached_sec = 0;
+  thread_local std::array<char, 24> cached_prefix{};
+  if (time_t_now != cached_sec) {
+    std::tm tm_buf{};
+    localtime_r(&time_t_now, &tm_buf);
+    cached_sec = time_t_now;
+    std::strftime(cached_prefix.data(), cached_prefix.size(),
+                  "%Y-%m-%d %H:%M:%S.", &tm_buf);
   }
+  const auto ms_val = static_cast<uint32_t>(ms.count());
+  std::array<char, 24> full_ts = cached_prefix;
+  full_ts[20] = static_cast<char>('0' + (ms_val / 100));
+  full_ts[21] = static_cast<char>('0' + ((ms_val / 10) % 10));
+  full_ts[22] = static_cast<char>('0' + (ms_val % 10));
+  result.append(full_ts.data(), 23);
 }
 
 }  // namespace
