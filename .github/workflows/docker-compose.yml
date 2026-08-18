@@ -5,9 +5,10 @@ on:
   push:
     paths:
       - 'Dockerfile.act'
-      - '.github/workflows/docker-publish.yml'
+      - '.github/workflows/docker-compose.yml'
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
