@@ -5,34 +5,32 @@
 
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <cstdio>
+#include <ctime>
 #include <string_view>
 
 #include "logger_error.hpp"
 
 namespace logger {
 
-// Implementation of class Logger
-// ////////////////////////////////
 LoggerError Logger::log_message(LogLevel level,
                                 std::string_view message) noexcept {
   try {
     if (!sink_) {
       return LoggerError::kNotInitialized;
     }
-    // Фильтруем сообщения по минимальному уровню и валидируем входные параметры
-    // до выполнения форматирования строки, чтобы исключить накладные расходы
-    // на лишние аллокации памяти.
 
-    if (static_cast<std::uint8_t>(level) <
-        static_cast<std::uint8_t>(min_level_)) {
+    if (static_cast<uint8_t>(level) < static_cast<uint8_t>(min_level_)) {
       return LoggerError::kSuccess;
     }
     if (message.empty()) {
       return LoggerError::kInvalidArgument;
     }
     const std::string formatted = format_message(level, message);
-
+    if (formatted.empty()) {
+      return LoggerError::kSinkError;
+    }
     return sink_->write(formatted);
   } catch (...) {
     return LoggerError::kSinkError;
@@ -57,9 +55,6 @@ void Logger::close() noexcept {
   }
 }
 
-// Message formatting and timestamp helpers
-// /////////////////////////////////////////
-
 namespace {
 
 void append_current_timestamp(std::string& result) {
@@ -78,7 +73,7 @@ void append_current_timestamp(std::string& result) {
       tm_buf.tm_min, tm_buf.tm_sec, static_cast<long long>(ms.count()));
 
   if (len > 0 && static_cast<std::size_t>(len) < buf.size()) {
-    result.append(buf.data(), static_cast<size_t>(len));
+    result.append(buf.data(), static_cast<std::size_t>(len));
   }
 }
 
@@ -88,7 +83,7 @@ std::string Logger::format_message(LogLevel level,
   try {
     std::string result;
 
-    // Резервируем 64 байта под префикс [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL]
+    // резервируем 64 байта под префикс [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL]
     // плюс длину сообщения, чтобы избежать повторных реаллокаций памяти.
     result.reserve(64 + message.size());
     result += "[";

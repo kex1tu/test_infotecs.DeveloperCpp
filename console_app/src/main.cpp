@@ -14,7 +14,6 @@
 #include "utilities.hpp"
 
 int main(int argc, char** argv) {
-  // отключаем синхронизацию со стандартными потоками с
   std::ios_base::sync_with_stdio(false);
   std::cin.tie(nullptr);
 
@@ -24,12 +23,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // инициализируем выбранный бэкенд логирования
-  auto [err, log_ptr] =
+  auto loggre_res =
       (config->mode == app::OutputMode::kFile)
           ? logger::make_file_logger(config->filepath, config->min_level)
           : logger::make_socket_logger(config->remote_addr, config->port,
                                        config->min_level);
+  auto err = loggre_res.first;
+  auto log_ptr = std::move(loggre_res.second);
   if (err != logger::LoggerError::kSuccess) {
     std::cerr << "Error creating logger: "
               << logger::logger_error_to_string(err) << '\n';
@@ -47,8 +47,6 @@ int main(int argc, char** argv) {
             << '\n';
   std::cout << std::flush;
 
-  // фоновый поток извлекает распарсенные записи из потокобезопасной очереди
-  // и записывает их в логгер до тех пор, пока очередь активна
   logger::ThreadSafeQueue<app::LogItem> queue;
   std::thread logger_thread([&]() {
     while (auto log_pair = queue.wait_and_pop()) {
@@ -61,12 +59,13 @@ int main(int argc, char** argv) {
     log_ptr->close();
   });
 
-  // основной поток считывает строки из std::cin, парсит префикс уровня лога и
-  // помещает элементы в очередь.
   std::string line;
   while (std::getline(std::cin, line)) {
     if (line == "exit") {
       break;
+    }
+    if (line.empty() || line.find_first_not_of(" \t") == std::string::npos) {
+      continue;
     }
     app::LogItem log_item = app::parse_input(line, config->min_level);
 
@@ -75,8 +74,6 @@ int main(int argc, char** argv) {
     }
   }
 
-  // оповещаем очередь о завершении работы (разблокирует wait_and_pop в фоновом
-  // потоке) и дожидаемся корректного завершения потока.
   queue.stop();
   if (logger_thread.joinable()) {
     logger_thread.join();

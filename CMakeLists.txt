@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 enable_testing()
 
-add_subdirectory("logger(PART I)")
-add_subdirectory("console_app(PART II)")
+add_subdirectory("logger")
+add_subdirectory("console_app")
+add_subdirectory("stat_app")
 add_subdirectory("tests")

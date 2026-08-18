@@ -4,22 +4,25 @@
 #pragma once
 
 #include <condition_variable>
+#include <cstddef>
 #include <mutex>
 #include <optional>
 #include <queue>
+#include <type_traits>
 #include <utility>
 
 namespace logger {
 
 /**
- * \brief Потокобезопасная очередь с поддержкой корректного завершения (stop).
+ * \brief потокобезопасная очередь с поддержкой корректного завершения (stop).
  *
- * Обеспечивает безопасную передачу данных между потоками по паттерну
- * Producer-Consumer. Поддерживает как блокирующее извлечение (wait_and_pop),
+ * обеспечивает безопасную передачу данных между потоками по паттерну
+ * Producer-Consumer. поддерживает как блокирующее извлечение (wait_and_pop),
  * так и неблокирующее (try_pop).
  *
- * \tparam T Тип элементов очереди.
- * \note Все публичные методы являются Thread-safe и noexcept.
+ * \tparam T тип элементов очереди.
+ * \note все публичные методы являются потокобезопасными и не выбрасывают
+ * исключений.
  */
 template <typename T>
 class ThreadSafeQueue {
@@ -37,11 +40,12 @@ class ThreadSafeQueue {
   ThreadSafeQueue& operator=(const ThreadSafeQueue&) = delete;
   ThreadSafeQueue(ThreadSafeQueue&&) = delete;
   ThreadSafeQueue& operator=(ThreadSafeQueue&&) = delete;
-
   /**
-   * \brief Завершает работу очереди и пробуждает все ожидающие потоки.
+   * \brief переводит очередь в состояние остановки и пробуждает ожидающие
+   * потоки.
    *
-   * \post is_working_ == false, все потоки в wait_and_pop разблокируются.
+   * \post после вызова stop() новые элементы не принимаются, а ожидающие
+   * вызовы wait_and_pop() завершаются.
    */
   void stop() noexcept {
     {
@@ -52,14 +56,15 @@ class ThreadSafeQueue {
   }
 
   /**
-   * \brief Добавляет элемент в конец очереди.
+   * \brief добавляет элемент в конец очереди.
    *
-   * \tparam U Универсальный тип добавляемого элемента.
-   * \param[in] value Элемент для добавления.
+   * \tparam U универсальный тип добавляемого элемента.
    * \return true при успешном добавлении, false если очередь остановлена.
    */
   template <typename U>
   bool push(U&& value) noexcept {
+    static_assert(std::is_constructible_v<T, U>,
+                  "U must be constructible to T");
     try {
       {
         std::scoped_lock<std::mutex> lock{mutex_};
@@ -74,12 +79,13 @@ class ThreadSafeQueue {
       return false;
     }
   }
-
   /**
-   * \brief Извлекает элемент из очереди с блокирующим ожиданием.
+   * \brief блокирующее извлечение элемента из головы очереди.
    *
-   * \return std::optional с элементом, или std::nullopt если очередь
-   * остановлена и пуста.
+   * приостанавливает вызывающий поток до появления хотя бы одного элемента
+   * либо до вызова метода stop().
+   *
+   * \return std::optional<T> с элементом или std::nullopt.
    */
   std::optional<T> wait_and_pop() noexcept {
     try {
@@ -96,11 +102,11 @@ class ThreadSafeQueue {
       return std::nullopt;
     }
   }
-
   /**
-   * \brief Пытается извлечь элемент из очереди без блокировки.
+   * \brief неблокирующая попытка извлечения элемента из очереди.
    *
-   * \return std::optional с элементом при непустой очереди, иначе std::nullopt.
+   * \return std::optional с элементом типа T, либо std::nullopt, если очередь
+   * пуста.
    */
   std::optional<T> try_pop() noexcept {
     try {
@@ -116,31 +122,16 @@ class ThreadSafeQueue {
     }
   }
 
-  /**
-   * \brief Проверяет, пуста ли очередь.
-   *
-   * \return true если в очереди нет элементов, иначе false.
-   */
   bool empty() const noexcept {
     std::scoped_lock<std::mutex> lock{mutex_};
     return queue_.empty();
   }
 
-  /**
-   * \brief Возвращает текущее количество элементов в очереди.
-   *
-   * \return Число элементов.
-   */
-  size_t size() const noexcept {
+  std::size_t size() const noexcept {
     std::scoped_lock<std::mutex> lock{mutex_};
     return queue_.size();
   }
 
-  /**
-   * \brief Очищает все элементы из очереди.
-   *
-   * \post empty() == true.
-   */
   void clear() noexcept {
     std::scoped_lock<std::mutex> lock{mutex_};
     queue_ = {};

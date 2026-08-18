@@ -14,23 +14,17 @@
 namespace logger {
 
 /**
- * \brief Основной класс логгера, выполняющий форматирование и фильтрацию
+ * \brief основной класс логгера, выполняющий форматирование и фильтрацию
  * сообщений.
  *
- * Передает отформатированные строки в установленный приемник ISink.
- *
+ * применяет фильтрацию по уровню логирования, формирует префикс с
+ * датой/временем и направляет результат в установленный приемник ISink.
+
  * \note Не является потокобезопасным при параллельном вызове log_message().
  *       Для многопоточного использования применяйте в паре с ThreadSafeQueue.
  */
 class Logger {
  public:
-  /**
-   * \brief Создает логгер с заданным приемником и минимальным порогом
-   * фильтрации.
-   *
-   * \param[in] sink Уникальный указатель на реализацию ISink.
-   * \param[in] min_level Минимальный порог фильтрации сообщений.
-   */
   explicit Logger(std::unique_ptr<ISink> sink,
                   LogLevel min_level = LogLevel::kDebug) noexcept
       : sink_(std::move(sink)), min_level_(min_level) {}
@@ -43,7 +37,7 @@ class Logger {
   Logger& operator=(Logger&&) noexcept = default;
 
   /**
-   * \brief Записывает сообщение в лог, если его уровень не ниже порога
+   * \brief записывает сообщение в лог, если его уровень не ниже порога
    * фильтрации.
    *
    * \param[in] level Уровень важности сообщения.
@@ -53,29 +47,14 @@ class Logger {
    * закрыт, LoggerError::kInvalidArgument если message пусто,
    *         LoggerError::kSinkError при ошибке записи в приемник.
    * \pre !message.empty()
+   * \pre Приемник sink_ должен быть инициализирован и открыт.
+   * \post При коде kSuccess сообщение гарантированно сброшено в целевой
+   * приемник.
    */
   LoggerError log_message(LogLevel level, std::string_view message) noexcept;
 
-  /**
-   * \brief Устанавливает минимальный уровень фильтрации сообщений.
-   *
-   * \param[in] level Новый уровень логирования.
-   * \return LoggerError::kSuccess.
-   */
   LoggerError set_level(LogLevel level) noexcept;
-
-  /**
-   * \brief Возвращает текущий уровень фильтрации лога.
-   *
-   * \return Текущий LogLevel.
-   */
   LogLevel get_level() const noexcept;
-
-  /**
-   * \brief Закрывает логгер и освобождает внутренний приемник.
-   *
-   * \post sink_ сброшен в nullptr.
-   */
   void close() noexcept;
 
  private:

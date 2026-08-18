@@ -1,6 +1,8 @@
 // Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
 // Distributed under MIT license or project terms.
 
+// NOLINTBEGIN
+
 #include <string>
 #include <vector>
 
@@ -9,7 +11,6 @@
 
 namespace {
 
-// вспомогательная функция для тестов
 std::optional<app::AppConfig> run_parse_cli(
     const std::vector<std::string>& args) noexcept {
   std::vector<char*> argv;
@@ -22,7 +23,6 @@ std::optional<app::AppConfig> run_parse_cli(
 
 }  // namespace
 
-// тесты parse_port корректных портов
 bool test_1() {
   uint16_t port = 0;
 
@@ -41,7 +41,6 @@ bool test_1() {
   return true;
 }
 
-// тесты parse_port невалидных портов
 bool test_2() {
   uint16_t port = 0;
 
@@ -53,7 +52,6 @@ bool test_2() {
   return true;
 }
 
-// тесты parse_port мусора
 bool test_3() {
   uint16_t port = 0;
 
@@ -64,23 +62,19 @@ bool test_3() {
   return true;
 }
 
-// тесты parse_cli_args --file
 bool test_4() {
-  // дефолтный уровнь debug
   auto res_default = run_parse_cli({"./app", "--file", "app.log"});
   ASSERT_TRUE(res_default.has_value());
   ASSERT_TRUE(res_default->mode == app::OutputMode::kFile);
   ASSERT_EQ(res_default->filepath, "app.log");
   ASSERT_EQ(res_default->min_level, logger::LogLevel::kDebug);
 
-  // явно указан INFO
-  auto res_info = run_parse_cli({"./app", "--file", "app.log", "INFO"});
+  auto res_info = run_parse_cli({"./app", "-f", "app.log", "INFO"});
   ASSERT_TRUE(res_info.has_value());
   ASSERT_TRUE(res_info->mode == app::OutputMode::kFile);
   ASSERT_EQ(res_info->filepath, "app.log");
   ASSERT_EQ(res_info->min_level, logger::LogLevel::kInfo);
 
-  // явно указа ERROR
   auto res_error = run_parse_cli({"./app", "--file", "app.log", "ERROR"});
   ASSERT_TRUE(res_error.has_value());
   ASSERT_TRUE(res_error->mode == app::OutputMode::kFile);
@@ -90,9 +84,7 @@ bool test_4() {
   return true;
 }
 
-// тесты parse_cli_args --socket
 bool test_5() {
-  // дефолтный уровень DEBUG
   auto res_default = run_parse_cli({"./app", "--socket", "127.0.0.1", "8080"});
   ASSERT_TRUE(res_default.has_value());
   ASSERT_TRUE(res_default->mode == app::OutputMode::kSocket);
@@ -100,9 +92,8 @@ bool test_5() {
   ASSERT_EQ(res_default->port, 8080);
   ASSERT_EQ(res_default->min_level, logger::LogLevel::kDebug);
 
-  // явный валидный порт и уровень
   auto res_warning =
-      run_parse_cli({"./app", "--socket", "localhost", "9000", "WARNING"});
+      run_parse_cli({"./app", "-s", "localhost", "9000", "WARNING"});
   ASSERT_TRUE(res_warning.has_value());
   ASSERT_TRUE(res_warning->mode == app::OutputMode::kSocket);
   ASSERT_EQ(res_warning->remote_addr, "localhost");
@@ -112,7 +103,6 @@ bool test_5() {
   return true;
 }
 
-// мало аргументов
 bool test_6() {
   auto res_file = run_parse_cli({"./app", "--file"});
   ASSERT_TRUE(!res_file.has_value());
@@ -126,12 +116,11 @@ bool test_6() {
   return true;
 }
 
-// неизвестные флаги и пустой флаг
 bool test_7() {
   auto res_udp = run_parse_cli({"./app", "--unknowsn", "127.0.0.1", "8080"});
   ASSERT_TRUE(!res_udp.has_value());
 
-  auto res_short = run_parse_cli({"./app", "-f", "app.log"});
+  auto res_short = run_parse_cli({"./app", "-x", "app.log"});
   ASSERT_TRUE(!res_short.has_value());
 
   auto res_empty = run_parse_cli({"./app"});
@@ -140,7 +129,6 @@ bool test_7() {
   return true;
 }
 
-// невалидные значения уровня лога
 bool test_8() {
   auto res_file =
       run_parse_cli({"./app", "--file", "test.log", "INVALID_LEVEL"});
@@ -153,7 +141,6 @@ bool test_8() {
   return true;
 }
 
-// тест parse_input строка с уровнем
 bool test_9() {
   auto item1 = app::parse_input("[INFO] User logged in");
   ASSERT_EQ(item1.level, logger::LogLevel::kInfo);
@@ -166,7 +153,6 @@ bool test_9() {
   return true;
 }
 
-// Тесты parse_input c разным регистром
 bool test_10() {
   auto item1 = app::parse_input("[dEbUG] msg");
   ASSERT_EQ(item1.level, logger::LogLevel::kDebug);
@@ -179,7 +165,6 @@ bool test_10() {
   return true;
 }
 
-// parse_input лишние пробелы
 bool test_11() {
   auto item = app::parse_input("   [INFO]   hello world");
   ASSERT_EQ(item.level, logger::LogLevel::kInfo);
@@ -188,7 +173,6 @@ bool test_11() {
   return true;
 }
 
-// строка без префикса уровня
 bool test_12() {
   auto item1 = app::parse_input("Regular text message");
   ASSERT_EQ(item1.level, logger::LogLevel::kDebug);
@@ -201,7 +185,6 @@ bool test_12() {
   return true;
 }
 
-// parse_input строка с неизвестным префиксом
 bool test_13() {
   auto item = app::parse_input("[CUSTOM] text");
   ASSERT_EQ(item.level, logger::LogLevel::kDebug);
@@ -210,7 +193,6 @@ bool test_13() {
   return true;
 }
 
-// parse_input пустая строка и строка только из пробелов
 bool test_14() {
   auto item_empty = app::parse_input("");
   ASSERT_TRUE(item_empty.message.empty());
@@ -221,7 +203,6 @@ bool test_14() {
   return true;
 }
 
-// parse_input непарные скобки
 bool test_15() {
   auto item1 = app::parse_input("[INFO message");
   ASSERT_EQ(item1.level, logger::LogLevel::kDebug);
@@ -238,7 +219,7 @@ int main() {
   int passed = 0;
   int total = 0;
 
-  std::cout << "Тесты: \n";
+  std::cout << "Тесты utilities \n";
   std::cout << "==========================================\n";
   RUN_TEST(test_1);
   RUN_TEST(test_2);
@@ -261,3 +242,5 @@ int main() {
 
   return (passed == total) ? 0 : 1;
 }
+
+// NOLINTEND

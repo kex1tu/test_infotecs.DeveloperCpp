@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
 // Distributed under MIT license or project terms.
 
+// NOLINTBEGIN
 #include <cctype>
 #include <fstream>
 #include <string_view>
@@ -12,7 +13,6 @@
 #include "logger_factories.hpp"
 #include "tests.hpp"
 
-// из уровня лога строку и обратно
 bool test_1() {
   using namespace logger;
 
@@ -45,7 +45,6 @@ bool test_1() {
   return true;
 }
 
-// запуск без инициализации
 bool test_2() {
   logger::Logger log(nullptr);
 
@@ -55,7 +54,6 @@ bool test_2() {
   return true;
 }
 
-// проверка фабрик
 bool test_3() {
   using namespace logger;
 
@@ -83,7 +81,6 @@ bool test_3() {
   return true;
 }
 
-// тест на работу с фильтром по уровню
 bool test_4() {
   using namespace logger;
 
@@ -130,7 +127,6 @@ bool test_4() {
   return true;
 }
 
-// тест на закрытие и создание нового логгера
 bool test_5() {
   using namespace logger;
 
@@ -156,7 +152,6 @@ bool test_5() {
   return true;
 }
 
-// запись в реальный файл
 bool test_6() {
   using namespace logger;
 
@@ -183,8 +178,6 @@ bool test_6() {
 
   return true;
 }
-
-// проверка формата лога [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] Message\n
 
 bool test_7() {
   using namespace logger;
@@ -236,7 +229,6 @@ bool test_7() {
   return true;
 }
 
-// запись пустого сообщения
 bool test_8() {
   using namespace logger;
 
@@ -256,7 +248,6 @@ bool test_8() {
   return true;
 }
 
-// запись в закрытый FileSink и открытие по несуществующему пути
 bool test_9() {
   using namespace logger;
 
@@ -287,7 +278,7 @@ int main() {
   int passed = 0;
   int total = 0;
 
-  std::cout << "Тесты: \n";
+  std::cout << "Тесты LOGGER: \n";
   std::cout << "==========================================\n";
   RUN_TEST(test_1);
   RUN_TEST(test_2);
@@ -304,3 +295,4 @@ int main() {
 
   return (passed == total) ? 0 : 1;
 }
+// NOLINTEND

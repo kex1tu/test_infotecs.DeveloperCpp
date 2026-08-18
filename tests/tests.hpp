@@ -1,10 +1,12 @@
 // Copyright (C) 2026 Grigoriy Mikheyev. All rights reserved.
 // Distributed under MIT license or project terms.
 
+// NOLINTBEGIN
+
 #pragma once
 
-// NOLINTNEXTLINE
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -31,7 +33,6 @@
     ++total;                                          \
   } while (0)
 
-// sink для тестов на базе std::vector<std::string>
 class MemorySink final : public logger::ISink {
  public:
   bool is_open_{true};
@@ -54,3 +55,4 @@ class MemorySink final : public logger::ISink {
 
   bool is_open() const noexcept override { return is_open_; }
 };
+// NOLINTEND

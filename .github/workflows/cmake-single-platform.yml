@@ -1,0 +1,127 @@
+name: CMake CI Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  main-ci:
+    name: Build, Lint & Valgrind
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # - name: Install dependencies and tools
+        # run: |
+         # if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
+          # $SUDO apt-get update
+          # $SUDO apt-get install -y --no-install-recommends \
+          #  build-essential \
+          #  cmake \
+          #  ninja-build \
+          #  g++ \
+          #  clang-format \
+          #  clang-tidy \
+          #  valgrind
+
+      - name: Check code formatting (clang-format)
+        run: |
+          find console_app logger stat_app tests \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) | xargs clang-format --dry-run --Werror
+
+      - name: Configure CMake (Release)
+        run: >
+          cmake -B build
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build project
+        run: >
+          cmake --build build
+          --config Release
+          --parallel $(nproc)
+
+      - name: Run Clang-Tidy Linter
+        run: |
+          find console_app logger stat_app -name '*.cpp' | xargs -n 1 clang-tidy -p build --warnings-as-errors='*'
+
+      - name: Run Unit Tests (CTest)
+        run: >
+          ctest --test-dir build
+          --output-on-failure
+          -C Release
+          --parallel $(nproc)
+
+      - name: Run Valgrind Memory Checks
+        run: |
+          for test_bin in build/tests/test_*; do
+            if [ -x "$test_bin" ]; then
+              echo "==> Running Valgrind on $test_bin..."
+              valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all "$test_bin"
+            fi
+          done
+
+  sanitizers:
+    name: Sanitizers (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ASan & UBSan
+            build_dir: build-asan
+            flags: "-fsanitize=address,undefined -fno-omit-frame-pointer"
+            env_vars: "ASAN_OPTIONS=check_initialization_order=1:strict_init_order=1:detect_stack_use_after_return=1"
+          - name: TSan
+            build_dir: build-tsan
+            flags: "-fsanitize=thread"
+            env_vars: "TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+     # - name: Install dependencies
+       # run: |
+        #  if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
+        #  $SUDO apt-get update
+        #  $SUDO apt-get install -y --no-install-recommends \
+        #  build-essential \
+        #  cmake \
+        #  ninja-build \
+        #  g++
+
+      - name: Configure CMake with Sanitizer
+        run: >
+          cmake -B ${{ matrix.build_dir }}
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="${{ matrix.flags }}"
+
+      - name: Build with Sanitizer
+        run: >
+          cmake --build ${{ matrix.build_dir }}
+          --config Debug
+          --parallel $(nproc)
+
+      - name: Run CTest with Sanitizer
+        run: |
+          export ${{ matrix.env_vars }}
+          if command -v setarch >/dev/null 2>&1 && setarch $(uname -m) -R true 2>/dev/null; then
+            setarch $(uname -m) -R ctest --test-dir ${{ matrix.build_dir }} --output-on-failure -C Debug --parallel $(nproc)
+          else
+            ctest --test-dir ${{ matrix.build_dir }} --output-on-failure -C Debug --parallel $(nproc)
+          fi

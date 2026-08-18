@@ -1,0 +1,4 @@
+-P gtest=act-spbu:latest
+-P ubuntu-latest=act-spbu:latest
+--pull=false
+--privileged
