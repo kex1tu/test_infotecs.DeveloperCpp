@@ -229,7 +229,7 @@ valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./build/test
 | **1.1** | Сборка библиотеки в виде static и shared | да | [logger/CMakeLists.txt](logger/CMakeLists.txt) |
 | **1.2** | Параметры: файл лога, дефолтный уровень (enum, $\ge 3$) | да | [logger.hpp](logger/include/logger.hpp), [log_level.hpp](logger/include/log_level.hpp) |
 | **1.3** | Формат записи: текст, уровень, точное время | да | [logger.cpp](logger/src/logger.cpp) |
-| **1.4** | Динамическая смена уровня важности после инициализации | да | `Logger::set_default_level()` |
+| **1.4** | Динамическая смена уровня важности после инициализации | да | `Logger::set_level()` |
 | **1.5\*** | (*Дополнительно*) Логиррование в сокет с единым API | да | [socket_sink.hpp](logger/include/socket_sink.hpp) (интерфейс `ISink`) |
 | **2.1** | Консольное многопоточное приложение для проверки | да | [console_app/src/main.cpp](console_app/src/main.cpp) |
 | **2.2** | Передача данных в поток записи через потокобезопасную очередь | да | [thread_safe_queue.hpp](logger/include/thread_safe_queue.hpp) |
